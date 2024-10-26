@@ -3,3 +3,4 @@ vosk
 sounddevice
 numpy
 fuzzywuzzy
+g4f
