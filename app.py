@@ -14,6 +14,10 @@ import subprocess
 import sys
 import os
 
+# Добавляем импорт nest_asyncio
+import nest_asyncio
+nest_asyncio.apply()
+
 # Настройка логирования
 logger = logging.getLogger('sonya_assistant')
 logger.setLevel(logging.INFO)
@@ -45,12 +49,12 @@ base_dialogue = [
 messages = base_dialogue.copy()
 
 # Ограниченная очередь для аудио данных
-q = queue.Queue(maxsize=20)  # Установите подходящий размер
+q = queue.Queue(maxsize=20)
 
 # Инициализация модели распознавания речи
 model = vosk.Model("model_small_ru")
 
-# Получение устройства по умолчанию и частоты микрофона
+
 device = sd.default.device
 samplerate = int(sd.query_devices(device[0], "input")["default_samplerate"])
 
@@ -58,7 +62,7 @@ samplerate = int(sd.query_devices(device[0], "input")["default_samplerate"])
 alarms = []
 reminders = []
 
-# Функции для управления контекстом
+
 def update_chat(messages, role, content):
     messages.append({"role": role, "content": content})
     return messages
@@ -68,14 +72,14 @@ def clear_context():
     messages = base_dialogue.copy()
     return messages
 
-# Функция обратного вызова для аудио данных
+
 def audio_callback(indata, frames, time, status):
     try:
         q.put_nowait(bytes(indata))
     except queue.Full:
         logger.warning("Очередь аудио переполнена. Данные будут отброшены.")
 
-# Функция для проверки ключевого слова
+
 def is_wake_word(data):
     wake_words = ["соня", "сонька", "сонечка", "sonya"]
     for word in wake_words:
@@ -84,13 +88,13 @@ def is_wake_word(data):
             return True
     return False
 
-# Функция для управления яркостью с использованием brightnessctl
+
 def adjust_brightness(direction):
     logger.info(f"Регулировка яркости: {direction}")
     if sys.platform.startswith("linux"):
         try:
             if direction == "up":
-                subprocess.check_call(["brightnessctl", "set", "+10%"])
+                subprocess.check_call(["brightnessctl", "set", "+20%"])
             else:
                 subprocess.check_call(["brightnessctl", "set", "10%-"])
             response = "Яркость изменена."
@@ -106,14 +110,14 @@ def adjust_brightness(direction):
         logger.info(f"Бот ответил: {response}")
         voice.bot_speak(response)
 
-# Функция для регулировки громкости
+
 def adjust_volume(direction):
     logger.info(f"Регулировка громкости: {direction}")
     if sys.platform.startswith("linux"):
         if direction == "up":
-            os.system("amixer -D pulse sset Master 5%+")
+            os.system("amixer -D pulse sset Master 20%+")
         else:
-            os.system("amixer -D pulse sset Master 5%-")
+            os.system("amixer -D pulse sset Master 20%-")
         response = "Громкость изменена."
         logger.info(f"Бот ответил: {response}")
         voice.bot_speak(response)
@@ -122,7 +126,7 @@ def adjust_volume(direction):
         logger.info(f"Бот ответил: {response}")
         voice.bot_speak(response)
 
-# Функция для воспроизведения звукового сигнала
+
 def play_sound():
     logger.info("Воспроизведение звукового сигнала")
     if sys.platform.startswith("linux"):
@@ -138,8 +142,8 @@ def open_application(app_name):
         'калькулятор': 'gnome-calculator',
         'терминал': 'gnome-terminal',
         'блокнот': 'gedit',
-        # Добавьте сюда другие приложения
-    }
+
+}
     app_command = applications.get(app_name.lower())
     if app_command:
         try:
@@ -157,7 +161,7 @@ def open_application(app_name):
         logger.info(f"Бот ответил: {response}")
         voice.bot_speak(response)
 
-# Новая функция для игры "Угадай число"
+#"Угадай число"
 def guess_number():
     number = random.randint(1, 100)
     response = "Я загадала число от одного до ста. Попробуй угадать!"
@@ -174,7 +178,7 @@ def guess_number():
             voice.bot_speak("Поздравляю! Ты угадал число.")
             break
 
-# Новая функция для добавления напоминаний
+
 def add_reminder(reminder_text, minutes):
     reminder_time = datetime.now() + timedelta(minutes=minutes)
     reminders.append((reminder_time, reminder_text))
@@ -182,7 +186,7 @@ def add_reminder(reminder_text, minutes):
     logger.info(f"Бот ответил: {response}")
     voice.bot_speak(response)
 
-# Новая функция для приветствия пользователя
+
 def greet_user():
     hour = datetime.now().hour
     if 5 <= hour < 12:
@@ -194,7 +198,25 @@ def greet_user():
     logger.info(f"Бот ответил: {greeting}")
     voice.bot_speak(greeting)
 
-# Функция для обработки команд
+#поиск фильмов и сериалов
+def search_movie_or_series(query):
+    logger.info(f"Поиск фильма или сериала: {query}")
+    if query:
+        # Кодирование запроса для использования в URL
+        import urllib.parse
+        encoded_query = urllib.parse.quote(query)
+        # Открываем браузер с результатами поиска
+        search_url = f"https://www.google.com/search?q={encoded_query}+смотреть+онлайн"
+        webbrowser.open(search_url)
+        response = f"Ищу {query}."
+        logger.info(f"Бот ответил: {response}")
+        voice.bot_speak(response)
+    else:
+        response = "Пожалуйста, укажите название фильма или сериала."
+        logger.info(f"Бот ответил: {response}")
+        voice.bot_speak(response)
+
+#обработка команд
 async def process_command(command):
     command = command.lower()
     logger.info(f"Обработка команды: {command}")
@@ -257,8 +279,23 @@ async def process_command(command):
             response = "Пожалуйста, укажите название приложения."
             logger.info(f"Бот ответил: {response}")
             voice.bot_speak(response)
+    elif any(phrase in command for phrase in ["найди фильм", "найди сериал", "поиск фильма", "поиск сериала"]):
+        # Поиск фильма или сериала
+        for phrase in ["найди фильм", "найди сериал", "поиск фильма", "поиск сериала"]:
+            if phrase in command:
+                query = command.split(phrase)[-1].strip()
+                break
+        else:
+            query = ""
+
+        if query:
+            search_movie_or_series(query)
+        else:
+            response = "Пожалуйста, укажите название фильма или сериала."
+            logger.info(f"Бот ответил: {response}")
+            voice.bot_speak(response)
     else:
-        # Используем чат-бот для ответа
+       
         update_chat(messages, "user", command)
         try:
             logger.info("Отправка сообщения в g4f ChatCompletion")
@@ -288,7 +325,7 @@ async def get_weather():
     logger.info(f"Бот ответил: {response}")
     voice.bot_speak(response)
 
-# Функция для установки будильника
+#будильник (доработать)
 async def set_alarm(command):
     try:
         logger.info("Установка будильника")
@@ -306,7 +343,7 @@ async def set_alarm(command):
         logger.info(f"Бот ответил: {error_msg}")
         voice.bot_speak(error_msg)
 
-# Функция для проверки будильников и напоминаний
+#будильник (доработать)
 async def check_alarms():
     while True:
         now = datetime.now()
@@ -324,7 +361,7 @@ async def check_alarms():
                 reminders.remove((reminder_time, reminder_text))
         await asyncio.sleep(30)
 
-# Основная функция распознавания речи
+
 async def recognize(data):
     logger.info(f"Пользователь сказал: {data}")
     if is_wake_word(data):
@@ -344,11 +381,11 @@ async def recognize(data):
     else:
         logger.info("Ключевое слово не обнаружено.")
 
-# Функция обработки аудио данных
+#обработка аудио 
 async def audio_loop():
     with sd.RawInputStream(
         samplerate=samplerate,
-        blocksize=8000,  # Уменьшаем размер блока
+        blocksize=8000,  
         device=device[0],
         dtype="int16",
         channels=1,
@@ -374,6 +411,8 @@ async def main():
 
 if __name__ == "__main__":
     try:
-        asyncio.run(main())
+
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(main())
     except KeyboardInterrupt:
         logger.info("Программа остановлена пользователем.")
