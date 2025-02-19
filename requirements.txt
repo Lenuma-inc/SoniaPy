@@ -4,3 +4,4 @@ sounddevice
 numpy
 fuzzywuzzy
 g4f
+pyqt6
